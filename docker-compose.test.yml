@@ -8,3 +8,8 @@ services:
       args:
         - IMAGE_NAME
     command: --version
+    working_dir: /app
+    volumes:
+      - type: bind
+        source: ./project
+        target: /app
