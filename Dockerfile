@@ -1,22 +1,16 @@
 # Set defaults
 
-ARG COMPOSER_IMAGE="composer:1.6.4"
 ARG BASE_IMAGE="php:7.2-alpine"
 ARG PACKAGIST_NAME="vimeo/psalm"
 ARG PHPQA_NAME="psalm"
-ARG VERSION="2.0.0"
-
-# Download with Composer - https://getcomposer.org/
-
-FROM ${COMPOSER_IMAGE} as composer
-ARG PACKAGIST_NAME
-ARG VERSION
-RUN COMPOSER_HOME="/composer" \
-    composer global require --prefer-dist --no-progress --dev ${PACKAGIST_NAME}:${VERSION}
+ARG VERSION="2.0.5"
 
 # Build image
 
 FROM ${BASE_IMAGE}
+ARG COMPOSER_IMAGE
+ARG PACKAGIST_NAME
+ARG VERSION
 ARG PHPQA_NAME
 ARG VERSION
 ARG BUILD_DATE
@@ -29,8 +23,15 @@ RUN apk add --no-cache tini
 
 # Install Psalm - https://github.com/vimeo/psalm
 
-COPY --from=composer "/composer/vendor" "/vendor/"
-ENV PATH /vendor/bin:${PATH}
+COPY --from=composer:1.6.5 /usr/bin/composer /usr/bin/composer
+RUN COMPOSER_ALLOW_SUPERUSER=1 \
+    COMPOSER_HOME="/composer" \
+    composer global require --prefer-dist --no-progress --dev ${PACKAGIST_NAME}:${VERSION}
+ENV PATH /composer/vendor/bin:${PATH}
+
+# Satisfy Psalm's quest for a composer autoloader (with a symlink that disappears once a volume is mounted at /app)
+
+RUN mkdir /app && ln -s /composer/vendor/ /app/vendor
 
 # Add entrypoint script
 
@@ -48,7 +49,7 @@ LABEL org.label-schema.schema-version="1.0" \
       org.label-schema.usage="https://github.com/phpqa/${PHPQA_NAME}/README.md" \
       org.label-schema.vcs-url="https://github.com/phpqa/${PHPQA_NAME}.git" \
       org.label-schema.vcs-ref="${VCS_REF}" \
-      org.label-schema.docker.cmd="docker run --rm --volume \${PWD}:/app --workdir /app ${IMAGE_NAME} --help"
+      org.label-schema.docker.cmd="docker run --rm --volume \${PWD}:/app --workdir /app ${IMAGE_NAME}"
 
 # Package container
 
